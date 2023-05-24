@@ -66,7 +66,7 @@ jobs:
   - task: AzureRmWebAppDeployment@4
     inputs:
       ConnectionType: 'AzureRM'
-      azureSubscription: 'Poyuhuang Azure Internal Consumption(61dcfa04-a42c-4d47-8476-9e01feda2573)'
+      azureSubscription: '<Your-Subscription>'
       appType: 'webApp'
-      WebAppName: 'hello-java'
+      WebAppName: '<Your-Web-App-Name>'
       packageForLinux: '$(System.ArtifactsDirectory)/**/*.jar'
