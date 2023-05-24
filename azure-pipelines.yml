@@ -1,0 +1,72 @@
+# Maven
+# Build your Java project and run tests with Apache Maven.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/java
+
+trigger:
+- master
+
+# Microsoft-hosted agent
+pool:
+  vmImage: windows-latest
+
+jobs:
+- job: build
+  displayName: Build spring project
+  steps:
+  # Download JDK file
+  - task: PowerShell@2
+    inputs:
+      targetType: 'inline'
+      script: 'Invoke-WebRequest -Uri "https://download.java.net/openjdk/jdk17/ri/openjdk-17+35_windows-x64_bin.zip" -OutFile "$(Agent.TempDirectory)/openjdk-17+35_windows-x64_bin.zip"'
+  # Set up JDK environment
+  - task: JavaToolInstaller@0
+    inputs:
+      versionSpec: '17'
+      jdkArchitectureOption: 'x64'
+      jdkSourceOption: 'LocalDirectory'
+      jdkFile: '$(Agent.TempDirectory)/openjdk-17+35_windows-x64_bin.zip'
+      jdkDestinationDirectory: '$(Agent.TempDirectory)/java17-jdk'
+      cleanDestinationDirectory: true
+  # Maven build
+  - task: Maven@3
+    inputs:
+      mavenPomFile: 'pom.xml'
+      publishJUnitResults: true
+      testResultsFiles: '**/surefire-reports/TEST-*.xml'
+      javaHomeOption: 'JDKVersion'
+      jdkVersionOption: '1.17'
+      mavenVersionOption: 'Default'
+      mavenOptions: '-Xmx3072m'
+      mavenAuthenticateFeed: false
+      effectivePomSkip: false
+      sonarQubeRunAnalysis: false
+  # Copy artifact
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)/target'
+      Contents: '*.jar'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+  # Publish artifact file to pipeline
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
+
+- job: deploy
+  displayName: Deploy to App serivces
+  steps:
+  # Download pipeline artifact
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      buildType: 'current'
+      targetPath: '$(System.ArtifactsDirectory)'
+  # Deploy the artifact to Azure Web App service
+  - task: AzureRmWebAppDeployment@4
+    inputs:
+      ConnectionType: 'AzureRM'
+      azureSubscription: 'Poyuhuang Azure Internal Consumption(61dcfa04-a42c-4d47-8476-9e01feda2573)'
+      appType: 'webApp'
+      WebAppName: 'hello-java'
+      packageForLinux: '$(System.ArtifactsDirectory)/**/*.jar'
